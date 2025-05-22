@@ -4,6 +4,19 @@ This guide walks you through real-world Git scenarios in a clear and simple way.
 
 ---
 
+## 📚 Table of Contents
+
+- [🔧 Initial Setup](#-initial-setup)
+- [🚀 Starting a New Project](#-starting-a-new-project)
+- [📤 Working with Commits and Pushes](#-working-with-commits-and-pushes)
+- [🌿 Branching and Merging](#-branching-and-merging)
+- [📥 Cloning and Pulling](#-cloning-and-pulling)
+- [🛠️ Fixes and Recovery](#️-fixes-and-recovery)
+- [🔄 Working with Remotes](#-working-with-remotes)
+- [🔐 Private Repos and Authentication](#-private-repos-and-authentication)
+
+---
+
 ## 🔧 Initial Setup
 
 ### 1. Configure Git with Your Name and Email
@@ -152,3 +165,4 @@ When GitHub asks for your username/password:
 ---
 
 More sections can be added as needed. Each one is kept short and actionable so you can learn Git by doing it.
+
