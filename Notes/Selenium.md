@@ -201,3 +201,30 @@ This project is licensed under the [MIT License](https://opensource.org/licenses
 ## 🤝 Contributions
 
 Got improvements or examples? Feel free to **fork** this repository and submit a **pull request**. Sharing is caring – your input helps the community grow!
+
+
+
+
+js.executeScript(
+    "let cm = document.querySelector('.CodeMirror').CodeMirror;" +
+    "let lines = cm.getValue().split('\\n');" +
+    
+    // Remove any lines that include 'l.id'
+    "lines = lines.filter(line => !line.includes('l.id'));" +
+
+    // Add your new l.id line before ORDER BY (or at the end)
+    "for (let i = 0; i < lines.length; i++) {" +
+    "  if (lines[i].toLowerCase().includes('order by')) {" +
+    "    lines.splice(i, 0, '" + newLine + "');" +
+    "    break;" +
+    "  }" +
+    "}" +
+
+    // If no ORDER BY found, just add to end
+    "if (!lines.includes('" + newLine + "')) {" +
+    "  lines.push('" + newLine + "');" +
+    "}" +
+
+    // Set the updated query back
+    "cm.setValue(lines.join('\\n'));"
+);
