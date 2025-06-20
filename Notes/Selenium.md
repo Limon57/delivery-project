@@ -205,6 +205,9 @@ Got improvements or examples? Feel free to **fork** this repository and submit a
 
 
 
+JavascriptExecutor js = (JavascriptExecutor) driver;
+String newLine = "AND l.id = 'USCPIL123456'"; // ← Replace with your actual ID
+
 js.executeScript(
     "let cm = document.querySelector('.CodeMirror').CodeMirror;" +
     "let lines = cm.getValue().split('\\n');" +
