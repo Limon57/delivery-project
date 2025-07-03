@@ -1,33 +1,26 @@
-QueryBank queryBank = new QueryBank();
+WebElement editor = wait.until(ExpectedConditions.presenceOfElementLocated(
+    By.cssSelector("div.monaco-editor")
+));
 
-        WebDriverManager.edgedriver().setup();
-        WebDriver driver = new EdgeDriver();
-        JavascriptExecutor js = (JavascriptExecutor) driver;
+String query = queryBank.getMainQuery("USCPIL14172731");
 
-        // Open BigQuery
-        driver.get("https://console.cloud.google.com/bigquery?authuser=0&project=re-ev-zeus-prod");
+String script =
+    "return (function() {" +
+    "  if (!window.monaco || !monaco.editor) return 'monaco not ready';" +
+    "  const editors = monaco.editor.getEditors ? monaco.editor.getEditors() : monaco.editor.getModels();" +
+    "  if (!editors || editors.length === 0) return 'no editors';" +
+    "  const editor = monaco.editor.getEditors ? editors[0] : monaco.editor.getModels()[0];" +
+    "  if (editor.setValue) {" +
+    "    editor.setValue(arguments[0]);" +
+    "    return 'injected with setValue';" +
+    "  } else if (monaco.editor.getModels) {" +
+    "    const model = monaco.editor.getModels()[0];" +
+    "    model.setValue(arguments[0]);" +
+    "    return 'injected via model';" +
+    "  }" +
+    "  return 'injection failed';" +
+    "})();";
 
-        // Wait for editor area to be present
-        WebDriverWait wait = new WebDriverWait(driver, Duration.ofSeconds(20));
-        WebElement queryBox = wait.until(ExpectedConditions.presenceOfElementLocated(
-            By.xpath("//div[contains(@class, 'view-lines')]")
-        ));
+Object result = ((JavascriptExecutor) driver).executeScript(script, query);
+System.out.println("Injection result: " + result);
 
-        // Click to focus the editor
-        js.executeScript("arguments[0].click();", queryBox);
-        Thread.sleep(1000);  // Let it stabilize
-
-        // Type the query using sendKeys (simulate user input)
-        queryBox.click();
-        queryBox.sendKeys(Keys.CONTROL + "a"); // Select all
-        queryBox.sendKeys(Keys.DELETE);        // Clear existing content
-        queryBox.sendKeys(queryBank.getMainQuery("USCPIL14172731"));
-        System.out.println("Query pasted");
-
-        // Wait until Run button is clickable
-        WebElement runButton = wait.until(ExpectedConditions.elementToBeClickable(
-            By.xpath("//button[.//span[text()='Run']]")
-        ));
-
-        runButton.click();
-        System.out.println("Run button clicked");
