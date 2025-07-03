@@ -1,86 +1,46 @@
-package org.example.alertIssues;
+ QueryBank queryBank = new QueryBank();
 
-import javax.swing.*;
-import java.awt.*;
-import java.awt.event.ActionEvent;
-import java.io.File;
+        WebDriver driver = WebDriverManager.getDriver();
+        driver.get("https://console.cloud.google.com/bigquery?authuser=0&project=re-ev-zeus-prod");
 
-public class GUI extends JFrame {
-    private JTextField manualTextField;
-    private JTextField imagePathField;
-    private JButton browseImageButton;
-    private JButton runWithTextButton;
-    private JButton runWithImageButton;
+        JavascriptExecutor js = (JavascriptExecutor) driver;
 
-    private InoperativeEVSEsList evseChecker;
+        // Wait for query editor to load
+        WebElement queryBox = WebDriverManager.getWait().until(
+                ExpectedConditions.presenceOfElementLocated(
+                        By.xpath("//div[contains(@class, 'view-lines')]")
+                )
+        );
 
-    public GUI(InoperativeEVSEsList evseChecker) {
-        this.evseChecker = evseChecker;
-        setupUI();
-    }
+        // Give time for it to be fully interactable
+        Thread.sleep(2000);
 
-    private void setupUI() {
-        setTitle("Inoperative EVSE Checker");
-        setSize(600, 300);
-        setDefaultCloseOperation(EXIT_ON_CLOSE);
-        setLayout(new BorderLayout());
+        // Focus and simulate click
+        js.executeScript(
+                "arguments[0].focus(); arguments[0].dispatchEvent(new MouseEvent('click', {bubbles: true}));",
+                queryBox
+        );
 
-        JPanel inputPanel = new JPanel(new GridLayout(3, 2, 10, 10));
+        Thread.sleep(500); // Let the focus settle
 
-        // Manual Text
-        manualTextField = new JTextField();
-        inputPanel.add(new JLabel("Manual Input Text:"));
-        inputPanel.add(manualTextField);
+        // Paste the query content
+        js.executeScript(
+                "arguments[0].textContent = arguments[1];",
+                queryBox,
+                queryBank.getMainQuery("USCPIL14172731")
+        );
+        System.out.println("sent");
 
-        // Image Path
-        imagePathField = new JTextField();
-        browseImageButton = new JButton("Browse...");
-        browseImageButton.addActionListener(this::onBrowseImage);
+        // Simulate a key press to activate the Run button
+        js.executeScript(
+                "var e = new KeyboardEvent('keydown', {key:' ', code:'Space', keyCode:32, which:32, bubbles:true}); arguments[0].dispatchEvent(e);",
+                queryBox
+        );
 
-        inputPanel.add(new JLabel("Image Path:"));
-        inputPanel.add(imagePathField);
-        inputPanel.add(new JLabel("")); // empty label for layout
-        inputPanel.add(browseImageButton);
-
-        add(inputPanel, BorderLayout.CENTER);
-
-        // Run Buttons
-        JPanel buttonPanel = new JPanel();
-        runWithTextButton = new JButton("Run with Manual Text");
-        runWithImageButton = new JButton("Run with Image");
-
-        runWithTextButton.addActionListener(this::onRunWithText);
-        runWithImageButton.addActionListener(this::onRunWithImage);
-
-        buttonPanel.add(runWithTextButton);
-        buttonPanel.add(runWithImageButton);
-
-        add(buttonPanel, BorderLayout.SOUTH);
-    }
-
-    private void onBrowseImage(ActionEvent e) {
-        JFileChooser fileChooser = new JFileChooser();
-        if (fileChooser.showOpenDialog(this) == JFileChooser.APPROVE_OPTION) {
-            File selected = fileChooser.getSelectedFile();
-            imagePathField.setText(selected.getAbsolutePath());
-        }
-    }
-
-    private void onRunWithText(ActionEvent e) {
-        String text = manualTextField.getText();
-        if (!text.isEmpty()) {
-            evseChecker.runWithManualInput(text);
-        } else {
-            JOptionPane.showMessageDialog(this, "Please enter manual text.");
-        }
-    }
-
-    private void onRunWithImage(ActionEvent e) {
-        String imagePath = imagePathField.getText();
-        if (!imagePath.isEmpty()) {
-            evseChecker.runWithImage(imagePath);
-        } else {
-            JOptionPane.showMessageDialog(this, "Please select an image.");
-        }
-    }
-}
+        // Click the Run button
+        WebDriverWait wait = new WebDriverWait(driver, Duration.ofSeconds(10));
+        WebElement runButton = wait.until(ExpectedConditions.elementToBeClickable(
+                By.xpath("//button[.//span[text()='Run']]")
+        ));
+        runButton.click();
+        System.out.println("run clicked");
