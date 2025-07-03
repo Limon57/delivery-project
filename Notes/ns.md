@@ -1,26 +1,38 @@
-WebElement editor = wait.until(ExpectedConditions.presenceOfElementLocated(
-    By.cssSelector("div.monaco-editor")
-));
+// Wait for the Monaco editor container to appear
+        WebElement editorContainer = wait.until(ExpectedConditions.presenceOfElementLocated(
+            By.cssSelector("div.monaco-editor")
+        ));
+        System.out.println("✅ Found editor container");
 
-String query = queryBank.getMainQuery("USCPIL14172731");
+        // Wait for Monaco editor to be fully initialized
+        String waitForMonaco = 
+            "return new Promise(resolve => {" +
+            "  function check() {" +
+            "    if (window.monaco && monaco.editor && monaco.editor.getModels().length > 0) {" +
+            "      resolve(true);" +
+            "    } else {" +
+            "      setTimeout(check, 200);" +
+            "    }" +
+            "  }" +
+            "  check();" +
+            "});";
+        ((JavascriptExecutor) driver).executeAsyncScript(waitForMonaco);
+        System.out.println("✅ Monaco is ready");
 
-String script =
-    "return (function() {" +
-    "  if (!window.monaco || !monaco.editor) return 'monaco not ready';" +
-    "  const editors = monaco.editor.getEditors ? monaco.editor.getEditors() : monaco.editor.getModels();" +
-    "  if (!editors || editors.length === 0) return 'no editors';" +
-    "  const editor = monaco.editor.getEditors ? editors[0] : monaco.editor.getModels()[0];" +
-    "  if (editor.setValue) {" +
-    "    editor.setValue(arguments[0]);" +
-    "    return 'injected with setValue';" +
-    "  } else if (monaco.editor.getModels) {" +
-    "    const model = monaco.editor.getModels()[0];" +
-    "    model.setValue(arguments[0]);" +
-    "    return 'injected via model';" +
-    "  }" +
-    "  return 'injection failed';" +
-    "})();";
+        // Get your query from QueryBank
+        QueryBank queryBank = new QueryBank();
+        String query = queryBank.getMainQuery("USCPIL14172731");
 
-Object result = ((JavascriptExecutor) driver).executeScript(script, query);
-System.out.println("Injection result: " + result);
+        // Inject the query using Monaco's setValue
+        String injectQueryScript =
+            "const model = monaco.editor.getModels()[0];" +
+            "model.setValue(arguments[0]);";
+        ((JavascriptExecutor) driver).executeScript(injectQueryScript, query);
+        System.out.println("✅ Query injected");
 
+        // Wait for the "Run" button to be clickable
+        WebElement runButton = wait.until(ExpectedConditions.elementToBeClickable(
+            By.xpath("//button[.//span[text()='Run']]")
+        ));
+        runButton.click();
+        System.out.println("✅ Run button clicked");
