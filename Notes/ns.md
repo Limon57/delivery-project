@@ -1,38 +1,30 @@
-// Wait for the Monaco editor container to appear
+// Wait for Monaco's container (ensures it's loaded visually)
         WebElement editorContainer = wait.until(ExpectedConditions.presenceOfElementLocated(
-            By.cssSelector("div.monaco-editor")
+                By.cssSelector("div.monaco-editor")
         ));
-        System.out.println("✅ Found editor container");
+        System.out.println("✅ Editor container found");
 
-        // Wait for Monaco editor to be fully initialized
-        String waitForMonaco = 
-            "return new Promise(resolve => {" +
-            "  function check() {" +
-            "    if (window.monaco && monaco.editor && monaco.editor.getModels().length > 0) {" +
-            "      resolve(true);" +
-            "    } else {" +
-            "      setTimeout(check, 200);" +
-            "    }" +
-            "  }" +
-            "  check();" +
-            "});";
-        ((JavascriptExecutor) driver).executeAsyncScript(waitForMonaco);
-        System.out.println("✅ Monaco is ready");
+        // Wait for the hidden textarea used by Monaco
+        WebElement inputArea = wait.until(ExpectedConditions.presenceOfElementLocated(
+                By.cssSelector("textarea.inputarea")
+        ));
+        System.out.println("✅ Input area found");
 
-        // Get your query from QueryBank
-        QueryBank queryBank = new QueryBank();
-        String query = queryBank.getMainQuery("USCPIL14172731");
+        // Set your query
+        String query = "SELECT * FROM `your_table` LIMIT 100;";
 
-        // Inject the query using Monaco's setValue
-        String injectQueryScript =
-            "const model = monaco.editor.getModels()[0];" +
-            "model.setValue(arguments[0]);";
-        ((JavascriptExecutor) driver).executeScript(injectQueryScript, query);
+        // Inject text directly into the input area
+        js.executeScript(
+            "let textarea = arguments[0];" +
+            "textarea.value = arguments[1];" +
+            "textarea.dispatchEvent(new Event('input', { bubbles: true }));",
+            inputArea, query
+        );
         System.out.println("✅ Query injected");
 
-        // Wait for the "Run" button to be clickable
+        // Wait for the Run button and click it
         WebElement runButton = wait.until(ExpectedConditions.elementToBeClickable(
-            By.xpath("//button[.//span[text()='Run']]")
+                By.xpath("//button[.//span[text()='Run']]")
         ));
         runButton.click();
-        System.out.println("✅ Run button clicked");
+        System.out.println("✅ Run clicked");
