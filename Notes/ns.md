@@ -1,30 +1,23 @@
-// Wait for Monaco's container (ensures it's loaded visually)
-        WebElement editorContainer = wait.until(ExpectedConditions.presenceOfElementLocated(
-                By.cssSelector("div.monaco-editor")
-        ));
-        System.out.println("✅ Editor container found");
+// Wait for the JSON container to be visible
+WebElement jsonContainer = WebDriverManager.getWait().until(
+    ExpectedConditions.visibilityOfElementLocated(
+        By.cssSelector("div.vt-text-content")
+    )
+);
 
-        // Wait for the hidden textarea used by Monaco
-        WebElement inputArea = wait.until(ExpectedConditions.presenceOfElementLocated(
-                By.cssSelector("textarea.inputarea")
-        ));
-        System.out.println("✅ Input area found");
+// Get all <span> lines inside the JSON container
+List<WebElement> lines = jsonContainer.findElements(By.cssSelector("div > span"));
 
-        // Set your query
-        String query = "SELECT * FROM `your_table` LIMIT 100;";
+// Build the full JSON string
+StringBuilder jsonBuilder = new StringBuilder();
+for (WebElement line : lines) {
+    String text = line.getText();
+    if (!text.isEmpty()) {
+        jsonBuilder.append(text).append("\n");
+    }
+}
 
-        // Inject text directly into the input area
-        js.executeScript(
-            "let textarea = arguments[0];" +
-            "textarea.value = arguments[1];" +
-            "textarea.dispatchEvent(new Event('input', { bubbles: true }));",
-            inputArea, query
-        );
-        System.out.println("✅ Query injected");
-
-        // Wait for the Run button and click it
-        WebElement runButton = wait.until(ExpectedConditions.elementToBeClickable(
-                By.xpath("//button[.//span[text()='Run']]")
-        ));
-        runButton.click();
-        System.out.println("✅ Run clicked");
+// Final JSON result as a string
+String fullJson = jsonBuilder.toString();
+System.out.println("✅ Extracted JSON:");
+System.out.println(fullJson);
