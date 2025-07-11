@@ -1,65 +1,83 @@
-public class VerdictCreator {
-    OpenObserveQueryHandler bigQueryJson = new OpenObserveQueryHandler();
-    JsonSessionParser jsonParser = new JsonSessionParser();
-    JsonResultHelper jsonResults = new JsonResultHelper();
 
-    public String getVerdict(String locationId, String alertTime) throws IOException {
-        String verdict;
+import javax.swing.*;
+import java.awt.*;
+import java.awt.event.*;
+import java.io.File;
 
-        // 1. Run timed query using locationId and alertTime
-        bigQueryJson.runTimedNormalQuery(locationId, alertTime);
+public class SmartRunnerGUI extends JFrame {
 
-        if (bigQueryJson.getNoResult()) {
-            // 2. No sessions completed, check actively down stations
-            bigQueryJson.runActivelyDownStationQuery();
+    private JTextArea inputArea;
+    private JButton runButton;
+    private JButton fileButton;
+    private JComboBox<String> optionsDropdown;
 
-            if (bigQueryJson.getActiveDownStationsQueryResults() == null) {
-                verdict = "There have been no completed sessions from the time of the alert, however there are no actively down stations. Check the website manually to confirm that the station is up and running.";
+    public SmartRunnerGUI() {
+        setTitle("Smart Runner");
+        setSize(600, 400);
+        setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+        setLocationRelativeTo(null);
+        setLayout(new BorderLayout());
+
+        // 📋 Big text area for pasting
+        inputArea = new JTextArea();
+        inputArea.setLineWrap(true);
+        inputArea.setWrapStyleWord(true);
+        JScrollPane scrollPane = new JScrollPane(inputArea);
+        scrollPane.setBorder(BorderFactory.createTitledBorder("Paste or type input here"));
+        add(scrollPane, BorderLayout.CENTER);
+
+        // 🔘 Bottom buttons panel
+        JPanel bottomPanel = new JPanel(new FlowLayout());
+
+        // ▶ Run button (pasted input only)
+        runButton = new JButton("Run");
+        runButton.addActionListener(e -> {
+            String text = inputArea.getText().trim();
+            if (!text.isEmpty()) {
+                JOptionPane.showMessageDialog(this, "Running with pasted input:\n" + text);
+                // insert logic for handling pasted text here
             } else {
-                // Parse actively down station result
-                jsonParser.splitJson(bigQueryJson.getActiveDownStationsQueryResults());
-                String locationName = jsonParser.getValue("facility_station_evse", jsonParser.peekCustomerSession());
-
-                boolean isMatch = false;
-                while (!jsonParser.customerSessionIsEmpty()) {
-                    String activeName = jsonParser.getValue("facility_station_evse", jsonParser.peekCustomerSession());
-                    if (activeName != null && activeName.contains(locationName)) {
-                        isMatch = true;
-                        break;
-                    }
-                    jsonParser.getNextCustomerSession();
-                }
-
-                if (isMatch) {
-                    verdict = "There have been no completed sessions from the time of the alert. The location " + locationName + " is currently down since it appears in the Actively down results. Check the Website to confirm this.";
-                } else {
-                    verdict = "There have been no completed sessions from the time of the alert. However the location " + locationName + " is not in the actively down station results. Check the website to confirm that the station is running.";
-                }
+                JOptionPane.showMessageDialog(this, "Please paste something to run.");
             }
-        } else {
-            // 3. There was a completed session
-            String stationName = jsonResults.getFirstResultVariable(bigQueryJson.getTimedNormalResult(), "facility_station_evse");
+        });
 
-            // 4. Check if station appears in outage history
-            bigQueryJson.runOutageQuery(locationId);
-            jsonParser.splitJson(bigQueryJson.getOutageQueryResults());
-
-            boolean stationIsOnOutageResults = false;
-            while (!jsonParser.customerSessionIsEmpty()) {
-                if (Objects.equals(stationName, jsonParser.getValue("facility_station_evse", jsonParser.peekCustomerSession()))) {
-                    stationIsOnOutageResults = true;
-                    break;
-                }
-                jsonParser.getNextCustomerSession();
+        // 📁 Choose file button
+        fileButton = new JButton("Choose File");
+        fileButton.addActionListener(e -> {
+            JFileChooser fileChooser = new JFileChooser();
+            int result = fileChooser.showOpenDialog(this);
+            if (result == JFileChooser.APPROVE_OPTION) {
+                File file = fileChooser.getSelectedFile();
+                JOptionPane.showMessageDialog(this, "Running with file:\n" + file.getAbsolutePath());
+                // insert logic for handling file input here
             }
+        });
 
-            if (stationIsOnOutageResults) {
-                verdict = "The location " + stationName + " was out for some time. However from the time of the alert, this location did have a completed session. Check on the website to confirm that it is up and running.";
-            } else {
-                verdict = "The location " + stationName + " has had a completed session from the time of the alert. This location does not appear to be down or to have a recent outage.";
+        // 🔽 Dropdown for pasted + option run
+        optionsDropdown = new JComboBox<>(new String[] {
+            "Select Action", "Analyze", "Convert", "Summarize"
+        });
+        optionsDropdown.addActionListener(e -> {
+            String selected = (String) optionsDropdown.getSelectedItem();
+            String pasted = inputArea.getText().trim();
+
+            if (!selected.equals("Select Action") && !pasted.isEmpty()) {
+                JOptionPane.showMessageDialog(this, "Running '" + selected + "' on:\n" + pasted);
+                // insert logic for selected operation
+            } else if (!selected.equals("Select Action")) {
+                JOptionPane.showMessageDialog(this, "Please paste input before choosing an action.");
             }
-        }
+        });
 
-        return verdict;
+        bottomPanel.add(runButton);
+        bottomPanel.add(fileButton);
+        bottomPanel.add(optionsDropdown);
+        add(bottomPanel, BorderLayout.SOUTH);
+
+        setVisible(true);
+    }
+
+    public static void main(String[] args) {
+        SwingUtilities.invokeLater(SmartRunnerGUI::new);
     }
 }
