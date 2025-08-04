@@ -1,113 +1,67 @@
-package gui;
+package core;
 
-import javax.swing.*;
-import java.awt.*;
-import core.GuiLogger;
+public class LogEntry {
+    private final String timeStamp;
+    private final String content;
 
-public class MainGui extends JFrame {
+    public LogEntry(String timeStamp, String content) {
+        this.timeStamp = timeStamp;
+        this.content = content;
+    }
 
-    public MainGui() {
-        setTitle("Smart Runner");
-        setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-        setSize(1200, 800);
-        setLocationRelativeTo(null);
-        setLayout(new BorderLayout());
+    public String getTimeStamp() {
+        return timeStamp;
+    }
 
-        InputPanel inputPanel = new InputPanel();
-        OutputPanel outputPanel = new OutputPanel();
-        ButtonPanel buttonPanel = new ButtonPanel(inputPanel, outputPanel);
-        ToolsMenu toolsMenu = new ToolsMenu(outputPanel);
-
-        setJMenuBar(toolsMenu.getMenuBar());
-        add(inputPanel.getScrollPane(), BorderLayout.CENTER);
-        add(outputPanel.getScrollPane(), BorderLayout.EAST);
-        add(buttonPanel.getPanel(), BorderLayout.SOUTH);
-
-        GuiLogger.hookSystemOut(outputPanel); // Redirect System.out
-        setVisible(true);
+    public String getContent() {
+        return content;
     }
 }
 
 
 
+package core;
 
-package gui;
-
-import javax.swing.*;
-
-public class InputPanel {
-    private final JTextArea inputArea;
-    private final JScrollPane scrollPane;
-
-    public InputPanel() {
-        inputArea = new JTextArea();
-        inputArea.setLineWrap(true);
-        inputArea.setWrapStyleWord(true);
-
-        scrollPane = new JScrollPane(inputArea);
-        scrollPane.setBorder(BorderFactory.createTitledBorder("Paste or type input here"));
-    }
-
-    public String getText() {
-        return inputArea.getText().trim();
-    }
-
-    public JScrollPane getScrollPane() {
-        return scrollPane;
-    }
-
-    public void setText(String text) {
-        inputArea.setText(text);
-    }
-}
-
-
-
-
-
-package gui;
+import gui.OutputPanel;
 
 import javax.swing.*;
-import java.util.ArrayList;
-import java.util.List;
-import core.LogEntry;
+import java.text.SimpleDateFormat;
+import java.util.Date;
 
-public class OutputPanel {
-    private final JTextArea outputArea;
-    private final JScrollPane scrollPane;
-    private final List<LogEntry> logs;
+public class AlertHandler {
+    private final OutputPanel outputPanel;
+    private final StringBuilder currentRunOutput;
 
-    public OutputPanel() {
-        outputArea = new JTextArea(10, 50);
-        outputArea.setEditable(false);
-        outputArea.setLineWrap(true);
-        outputArea.setWrapStyleWord(true);
-
-        scrollPane = new JScrollPane(outputArea);
-        scrollPane.setBorder(BorderFactory.createTitledBorder("Output"));
-
-        logs = new ArrayList<>();
+    public AlertHandler(OutputPanel outputPanel) {
+        this.outputPanel = outputPanel;
+        this.currentRunOutput = new StringBuilder();
     }
 
-    public void appendText(String text) {
-        outputArea.append(text);
-        outputArea.setCaretPosition(outputArea.getDocument().getLength());
-    }
+    public void handle(String text) {
+        new Thread(() -> {
+            try {
+                outputPanel.appendText("Running alert...\n");
+                currentRunOutput.append("Running alert...\n");
 
-    public void clear() {
-        outputArea.setText("");
-    }
+                // 🧪 Simulate alert execution — replace with your real logic
+                Thread.sleep(1000);
 
-    public JScrollPane getScrollPane() {
-        return scrollPane;
-    }
+                String result = "Alert completed.\n";
+                outputPanel.appendText(result);
+                currentRunOutput.append(result);
 
-    public List<LogEntry> getLogs() {
-        return logs;
-    }
+                // Add one LogEntry for this run
+                String timestamp = new SimpleDateFormat("HH:mm:ss").format(new Date());
+                outputPanel.getLogs().add(new LogEntry(timestamp, currentRunOutput.toString()));
 
-    public JTextArea getTextArea() {
-        return outputArea;
+                currentRunOutput.setLength(0); // clear after use
+
+            } catch (Exception e) {
+                String error = "Error: " + e.getMessage() + "\n";
+                outputPanel.appendText(error);
+                currentRunOutput.append(error);
+            }
+        }).start();
     }
 }
 
@@ -115,112 +69,62 @@ public class OutputPanel {
 
 
 
-package gui;
+package core;
+
+import gui.OutputPanel;
 
 import javax.swing.*;
-import core.AlertHandler;
+import java.io.OutputStream;
+import java.io.PrintStream;
 
-public class ButtonPanel {
-    private final JPanel panel;
+public class GuiLogger {
+    private static final StringBuilder buffer = new StringBuilder();
+    private static OutputPanel outputPanel;
+    private static final StringBuilder activeRunOutput = new StringBuilder(); // Shared collector
+    private static boolean debugMode = false;
 
-    public ButtonPanel(InputPanel inputPanel, OutputPanel outputPanel) {
-        panel = new JPanel();
-
-        JButton runButton = new JButton("Run");
-        runButton.addActionListener(e -> {
-            String input = inputPanel.getText();
-            if (input.isEmpty()) {
-                JOptionPane.showMessageDialog(null, "Please enter input before clicking Run.");
-                return;
+    public static void hookSystemOut(OutputPanel panel) {
+        outputPanel = panel;
+        System.setOut(new PrintStream(new OutputStream() {
+            @Override
+            public void write(int b) {
+                write(new byte[]{(byte) b}, 0, 1);
             }
 
-            AlertHandler handler = new AlertHandler(outputPanel);
-            handler.handle(input);
+            @Override
+            public void write(byte[] b, int off, int len) {
+                String text = new String(b, off, len);
+                buffer.append(text);
+                if (text.contains("\n")) {
+                    flushBuffer();
+                }
+            }
+        }, true));
+    }
+
+    private static void flushBuffer() {
+        String text = buffer.toString();
+        buffer.setLength(0); // clear buffer
+
+        if (outputPanel == null) return;
+
+        SwingUtilities.invokeLater(() -> {
+            if (debugMode || text.contains("[LOGGER]")) {
+                outputPanel.appendText(text);
+                activeRunOutput.append(text);
+            }
         });
-
-        JButton clearButton = new JButton("Clear Output");
-        clearButton.addActionListener(e -> outputPanel.clear());
-
-        panel.add(runButton);
-        panel.add(clearButton);
     }
 
-    public JPanel getPanel() {
-        return panel;
-    }
-}
-
-
-
-
-
-package gui;
-
-import javax.swing.*;
-
-public class ToolsMenu {
-    private final JMenuBar menuBar;
-
-    public ToolsMenu(OutputPanel outputPanel) {
-        menuBar = new JMenuBar();
-
-        JMenu tools = new JMenu("Tools");
-
-        JMenuItem viewLogs = new JMenuItem("View Logs");
-        viewLogs.addActionListener(e -> LogViewerWindow.show(outputPanel.getLogs()));
-
-        JMenuItem clearOutput = new JMenuItem("Clear Output");
-        clearOutput.addActionListener(e -> outputPanel.clear());
-
-        tools.add(viewLogs);
-        tools.add(clearOutput);
-        menuBar.add(tools);
+    public static void setDebugMode(boolean enabled) {
+        debugMode = enabled;
     }
 
-    public JMenuBar getMenuBar() {
-        return menuBar;
+    public static StringBuilder getCurrentRunOutput() {
+        return activeRunOutput;
+    }
+
+    public static void resetRunOutput() {
+        activeRunOutput.setLength(0);
     }
 }
-
-
-
-
-
-package gui;
-
-import javax.swing.*;
-import java.awt.*;
-import java.util.List;
-import core.LogEntry;
-
-public class LogViewerWindow {
-    public static void show(List<LogEntry> logs) {
-        JFrame frame = new JFrame("Log Viewer");
-        frame.setSize(700, 500);
-
-        JPanel logPanel = new JPanel();
-        logPanel.setLayout(new BoxLayout(logPanel, BoxLayout.Y_AXIS));
-
-        for (int i = 0; i < logs.size(); i++) {
-            LogEntry entry = logs.get(i);
-            JTextArea area = new JTextArea(entry.getContent());
-            area.setEditable(false);
-            JScrollPane scroll = new JScrollPane(area);
-            scroll.setVisible(false);
-
-            JButton toggle = new JButton("View Log " + (i + 1) + " [" + entry.getTimeStamp() + "]");
-            toggle.addActionListener(e -> scroll.setVisible(!scroll.isVisible()));
-
-            JPanel entryPanel = new JPanel(new BorderLayout());
-            entryPanel.add(toggle, BorderLayout.NORTH);
-            entryPanel.add(scroll, BorderLayout.CENTER);
-
-            logPanel.add(entryPanel);
-        }
-
-        JScrollPane mainScroll = new JScrollPane(logPanel);
-        frame.add(mainScroll);
-        frame.setVisible(true);
-    }
-}
-
